@@ -4,6 +4,7 @@
 # GeForce GTX 1080	6.1
 # GeForce GTX 970	5.2
 #
+setup_aws()
 
 if node["cuda"]["accept_nvidia_download_terms"].eql? "true"
   node.override.tensorflow.need_cuda = 1
