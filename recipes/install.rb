@@ -1,4 +1,3 @@
-
 # First, find out the compute capability of your GPU here: https://developer.nvidia.com/cuda-gpus
 # E.g., 
 # NVIDIA TITAN X	6.1
@@ -121,15 +120,24 @@ EOF
   package "libcurl-devel" do
     action :install    
   end
+end
 
-  bash "pip-upgrade" do
+bash "pip-upgrade" do
     user "root"
     code <<-EOF
     set -e
     pip install --upgrade pip
-EOF
-  end
-  
+
+    EOF
+end
+
+bash "pip-yarntf" do
+  user "root"
+  code <<-EOF
+    set -e
+    pip install yarntf
+
+    EOF
 end
 
 
