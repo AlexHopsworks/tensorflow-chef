@@ -21,8 +21,8 @@ if node["tensorflow"]["mkl"].eql? "true"
   node.override.tensorflow.install = "src"
 end
 
-if node["tensorflow"]["infiniband"].eql? "true"
-  node.override.tensorflow.need_infiniband = 1
+if node["tensorflow"]["rdma"].eql? "true"
+  node.override.tensorflow.need_rdma = 1
   node.override.tensorflow.install = "src"
   if node.platform_family.eql? "debian"
     package "libibverbs-dev"
@@ -53,9 +53,9 @@ group node.tensorflow.group do
   not_if "getent passwd #{node.tensorflow.user}"
 end
 
-package "expect" do
-  action :install
-end
+# package "expect" do
+#   action :install
+# end
 
 # http://www.pyimagesearch.com/2016/07/04/how-to-install-cuda-toolkit-and-cudnn-for-deep-learning/
 case node.platform_family
@@ -63,9 +63,9 @@ when "debian"
 
   execute 'apt-get update -y'
 
-  packages = %w{pkg-config zip g++ zlib1g-dev unzip swig git build-essential cmake unzip libopenblas-dev liblapack-dev linux-image-generic linux-image-extra-virtual linux-source linux-headers-generic python python-numpy python-dev python-pip python-lxml python-pillow libcupti-dev libcurl3-dev}
-  for script in packages do
-    package script do
+  packages = %w{pkg-config zip g++ zlib1g-dev unzip swig git build-essential cmake unzip libopenblas-dev liblapack-dev linux-image-generic linux-image-extra-virtual linux-source linux-headers-generic python python-numpy python-dev python-pip python-lxml python-pillow libcupti-dev libcurl3-dev python-wheel python-six }
+  for lib in packages do
+    package lib do
       action :install
     end
   end
@@ -78,48 +78,30 @@ when "rhel"
     set -e
     yum install epel-release -y
     yum install python-pip -y
+    yum install mlocate -y
+    updatedb
+
+# For yum repo for Nvidia
+#   yum-config-manager --add-repo=https://negativo17.org/repos/epel-nvidia.repo
 EOF
   end
 
-  package "gcc" do
-    action :install
+  packages = %w{gcc gcc-c++ kernel-devel openssl openssl-devel python python-devel python-lxml python-pillow libcurl-devel python-wheel python-six }
+  for lib in packages do
+    package lib do
+      action :install
+    end
   end
-  package "gcc-c++" do
-    action :install
-  end
-  package "kernel-devel" do
-    action :install
-  end
-  package "openssl" do
-    action :install
-  end
-  package "openssl-devel" do
-    action :install
-  end
-  package "openssl-libs" do
-    action :install
-  end
-  package "python" do 
-    action :install
-  end
-  package "python-devel" do 
-    action :install
-  end
-  package "python-lxml" do 
-    action :install
-  end
-  package "python" do
-    action :install
-  end
-  package "python-pillow" do
-    action :install
-  end
-  #  package "libcupti-dev" do
-  #    action :install    
-  #  end
-  package "libcurl-devel" do
-    action :install    
-  end
+
+  # https://negativo17.org/nvidia-driver/
+ # nvidia_packages = %w{ nvidia-driver nvidia-driver-libs.x86_64 dkms-nvidia cuda-devel cuda-libs cuda-cudnn cuda-cudnn-devel cuda-cli-tools cuda-cupti-devel cuda-extra-libs }
+ #  for driver in nvidia_packages do
+ #    package driver do
+ #      action :install
+ #    end
+ #  end
+
+  
 end
 
 bash "pip-upgrade" do
@@ -127,6 +109,7 @@ bash "pip-upgrade" do
     code <<-EOF
     set -e
     pip install --upgrade pip
+# --user
 
     EOF
 end
@@ -136,7 +119,7 @@ bash "pip-yarntf" do
   code <<-EOF
     set -e
     pip install yarntf
-
+# --user
     EOF
 end
 
@@ -167,16 +150,49 @@ include_recipe "java::oracle"
 
 if node.tensorflow.install == "src"
 
-  bash "bazel-install" do
-    user "root"
-    code <<-EOF
-    set -e
-    echo "deb [arch=amd64] http://storage.googleapis.com/bazel-apt stable jdk1.8" | sudo tee /etc/apt/sources.list.d/bazel.list  
-    curl https://bazel.build/bazel-release.pub.gpg | sudo apt-key add 
-    apt-get update -y
-    sudo apt-get install bazel -y
-EOF
-  end
+  case node["platform_family"]
+  when "debian"
+
+    bash "bazel-install" do
+      user "root"
+      code <<-EOF
+      set -e
+#      echo "deb [arch=amd64] http://storage.googleapis.com/bazel-apt stable jdk1.8" | sudo tee /etc/apt/sources.list.d/bazel.list  
+#      curl https://bazel.build/bazel-release.pub.gpg | sudo apt-key add -
+#      apt-get update -y
+#      sudo apt-get install bazel -y
+       apt-get install pkg-config zip g++ zlib1g-dev unzip -y
+       cd #{Chef::Config[:file_cache_path]}
+       wget #{node['bazel']['url']}
+       chmod +x bazel-*
+       ./bazel-0.5.2-installer-linux-x86_64.sh
+       /usr/local/bin/bazel
+    EOF
+    end
+  
+  when "rhel"
+
+    # https://gist.github.com/jarutis/6c2934705298720ff92a1c10f6a009d4
+    bash "bazel-install-centos" do
+      user "root"
+      code <<-EOF
+      set -e
+      yum install patch -y
+      yum -y install gcc gcc-c++ kernel-devel make automake autoconf swig git unzip libtool binutils
+      yum -y install epel-release
+      yum -y install numpy python-devel python-pip
+      yum -y install freetype-devel libpng12-devel zip zlib-devel giflib-devel zeromq3-devel
+      pip install grpcio_tools mock
+      cd #{Chef::Config[:file_cache_path]}
+      wget #{node['bazel']['url']}
+      chmod +x bazel-*
+      ./bazel-0.5.2-installer-linux-x86_64.sh
+      /usr/local/bin/bazel
+    EOF
+    end
+
+    
+  end  
 
 end     
 
@@ -254,12 +270,12 @@ end
 
 if node.cuda.enabled == "true"
 
-
-
   raise if "#{node.cuda.accept_nvidia_download_terms}" == "false"
   
   # Check to see if i can find a cuda card. If not, fail with an error
 
+  package "clang"
+  
   bash "test_nvidia" do
     user "root"
     code <<-EOF
@@ -269,12 +285,16 @@ if node.cuda.enabled == "true"
     not_if { node["cuda"]["skip_test"] == "true" }
   end
 
+
+case node.platform_family
+  when "debian"
+
   cuda =  File.basename(node.cuda.url)
   base_cuda_dir =  File.basename(cuda, "_linux-run")
   cuda_dir = "/tmp/#{base_cuda_dir}"
   cached_file = "#{Chef::Config[:file_cache_path]}/#{cuda}"
 
-
+  
   remote_file cached_file do
     source node.cuda.url
     mode 0755
@@ -292,6 +312,21 @@ if node.cuda.enabled == "true"
     not_if { File.exist?(cached_file) }
   end
 
+  patch =  File.basename(node.cuda.url_patch)
+  base_patch_dir =  File.basename(patch, "_linux-run")
+  patch_dir = "/tmp/#{base_patch_dir}"
+  patch_file = "#{Chef::Config[:file_cache_path]}/#{patch}"
+  
+  remote_file patch_file do
+    source node.cuda.url_patch
+    mode 0755
+    action :create
+    retries 2
+    ignore_failure true
+    not_if { File.exist?(patch_file) }
+  end
+
+end
   tensorflow_install "cuda_install" do
     action :cuda
   end
