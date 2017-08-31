@@ -6,7 +6,7 @@ source 'https://supermarket.chef.io'
 
 metadata
 
-cookbook 'kagent', github: 'AlexHopsworks/kagent-chef', branch: 'local'
+cookbook 'kagent', github: 'AlexHopsworks/kagent-chef', branch: 'vdcurrent'
 cookbook 'java'
 cookbook 'magic_shell'
 cookbook 'build-essential'
@@ -14,5 +14,5 @@ cookbook 'poise-python'
 cookbook 'zip'
 cookbook 'apt'
 cookbook 'homebrew'
-cookbook 'ndb', github: "AlexHopsworks/ndb-chef", branch: "local"
-cookbook 'hops', github: "AlexHopsworks/hops-hadoop-chef", branch: "local"
+cookbook 'ndb', github: "AlexHopsworks/ndb-chef", branch: "vdcurrent"
+cookbook 'hops', github: "AlexHopsworks/hops-hadoop-chef", branch: "vdcurrent"
