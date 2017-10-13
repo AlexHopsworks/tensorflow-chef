@@ -1,6 +1,14 @@
 action :cuda do
 
   cuda =  ::File.basename(node['cuda']['url'])
+  
+  bash "stop_xserver" do
+    user "root"
+    ignore_failure true
+    code <<-EOF
+      service lightdm stop
+    EOF
+  end
 
 case node['platform_family']
 when "debian"
@@ -105,18 +113,12 @@ end
 
 
 
-
-
-  bash "link_libs" do
-    user "root"
-    timeout 7200
-    code <<-EOF
-     set -e
-      if [ ! -f /usr/lib64/libcuda.so ] ; then
-          ln -s /usr/lib64/nvidia/libcuda.so /usr/lib64
-      fi
-    EOF
+  link "/usr/lib64/libcuda.so" do
+    owner node['tensorflow']['user']
+    group node['tensorflow']['group']
+    to "/usr/lib64/nvidia/libcuda.so"
   end
+
 
 
 end
