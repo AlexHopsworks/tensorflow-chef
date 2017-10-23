@@ -13,8 +13,7 @@ end
 #
 if node['tensorflow']['mpi'].eql? "true"
   node.override['tensorflow']['need_mpi'] = 1
-  node.override['tensorflow']['rdma'] = "true"
-#  node.override['tensorflow']['install'] = "src"
+  #node.override['tensorflow']['rdma'] = "true"
 end
 
 if node['tensorflow']['mkl'].eql? "true"
@@ -338,10 +337,6 @@ if node['cuda']['accept_nvidia_download_terms'].eql?("true")
     not_if { node['cuda']['skip_test'] == "true" }
   end
 
-
-# case node['platform_family']
-#   when "debian"
-
   cuda =  File.basename(node['cuda']['url'])
   base_cuda_dir =  File.basename(cuda, "_linux-run")
   cuda_dir = "/tmp/#{base_cuda_dir}"
@@ -379,6 +374,20 @@ if node['cuda']['accept_nvidia_download_terms'].eql?("true")
     not_if { File.exist?(patch_file) }
   end
 
+
+  driver =  File.basename(node['cuda']['driver_url'])
+  cached_file = "#{Chef::Config['file_cache_path']}/#{driver}"
+
+
+  remote_file cached_file do
+    source node['cuda']['driver_url']
+    mode 0755
+    action :create
+    retries 1
+    not_if { File.exist?(cached_file) }
+  end
+
+  
 #end
   tensorflow_install "cuda_install" do
     action :cuda
@@ -440,17 +449,71 @@ else
   end
 end
 
+
+if node['tensorflow']['mpi'] == "true"
+  
+  case node['platform_family']
+  when "debian"
+    package "openmpi-bin"
+    package "libopenmpi-dev"
+    package "mpi-default-bin"
+
+#     bash "install-nccl2-ubuntu" do
+#       user "root"
+#       code <<-EOF
+# #       set -e
+#        cd #{Chef::Config['file_cache_path']}
+#        rm -f nccl-repo-ubuntu1604-2.0.5-ga-cuda8.0_2-1_amd64.deb
+#        wget http://snurran.sics.se/hops/nccl-repo-ubuntu1604-2.0.5-ga-cuda8.0_2-1_amd64.deb
+#        dpkg -i nccl-repo-ubuntu1604-2.0.5-ga-cuda8.0_2-1_amd64.deb
+#        apt-key add /var/nccl-repo-2.0.5-ga-cuda8.0/7fa2af80.pub
+#        apt update
+#        apt install libnccl2 libnccl-dev
+
+#        # https://github.com/uber/horovod/blob/master/docs/gpus.md
+#        # HOROVOD_GPU_ALLGATHER=MPI HOROVOD_GPU_BROADCAST=MPI HOROVOD_GPU_ALLREDUCE=NCCL pip install --no-cache-dir horovod
+#        # HOROVOD_GPU_ALLREDUCE=MPI HOROVOD_GPU_ALLGATHER=MPI HOROVOD_GPU_BROADCAST=MPI pip install --no-cache-dir horovod
+#     EOF
+#     end
+
+  when "rhel"
+    # installs binaries to /usr/local/bin
+    # horovod needs mpicxx in /usr/local/bin/mpicxx - add it to the PATH
+    package "openmpi-devel"
+    
+    magic_shell_environment 'PATH' do
+      value "$PATH:#{node['cuda']['base_dir']}/bin:/usr/local/bin"
+    end    
+  end
+
+    magic_shell_environment 'LD_LIBRARY_PATH' do
+      value "$LD_LIBRARY_PATH:$JAVA_HOME/jre/lib/amd64/server:/usr/local/cuda/lib64:/usr/local/cuda/extras/CUPTI/lib64:/usr/local/nccl2/lib"
+    end
+  
+
+    nccl2="nccl_2.0.5-3+cuda8.0_amd64"
+    bash "install-nccl2" do
+      user "root"
+      code <<-EOF
+       set -e
+       cd #{Chef::Config['file_cache_path']}
+       rm -f #{nccl2}.txz
+       wget http://snurran.sics.se/hops/#{nccl2}.txz
+       rm -f #{nccl2}.tar
+       xz -d #{nccl2}.txz
+       rm -rf #{nccl2}
+       tar xf #{nccl2}.tar
+       rm -rf /usr/local/#{nccl2}
+       mv  #{nccl2} /usr/local
+       rm -f /usr/local/nccl2
+       ln -s /usr/local/#{nccl2} /usr/local/nccl2
+    EOF
+    end
+  
+end
+
 if node['tensorflow']['install'].eql?("src")
 
-  if node['tensorflow']['mpi'] == "true"
-    case node['platform_family']
-    when "debian"
-      package "openmpi-bin"
-      package "libopenmpi-dev"
-      package "mpi-default-bin"
-    when "rhel"
-      package "openmpi-devel"
-    end
     # https://wiki.fysik.dtu.dk/niflheim/OmniPath#openmpi-configuration
     # compile openmpi on centos 7
     # https://bitsanddragons.wordpress.com/2017/05/08/install-openmpi-2-1-0-on-centos-7/
@@ -458,8 +521,6 @@ if node['tensorflow']['install'].eql?("src")
     tensorflow_compile "mpi-compile" do
       action :openmpi
     end
-
-  end
 
   tensorflow_compile "tensorflow" do
     action :tf
