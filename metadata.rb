@@ -160,4 +160,6 @@ attribute "matplotlib/python2/version",
           :description => "Python 2 matplotlib version to install in python base environments",
           :type => "string"
 
-
+attribute "tensorflow/hopstfdemo/base_url",
+          :description => "URL to dowload hopstfdemo tour artifacts",
+          :type => 'string'

@@ -28,7 +28,8 @@ default['tensorflow']['hopstf_version'] = '0.0.1'
 default['tensorflow']['hopstf_url']    = "#{node['download_url']}/tensorflow/hops-tensorflow-#{node['tensorflow']['hopstf_version']}.jar"
 default['tensorflow']['examples_version']  = node['install']['version']
 default['tensorflow']['hopstfdemo_dir'] = "tensorflow_demo"
-default['tensorflow']['hopstfdemo_url'] = "#{node['download_url']}/tensorflow/#{node['tensorflow']['examples_version']}/demo.tar.gz"
+default['tensorflow']['hopstfdemo']['base_url'] = "#{node['download_url']}"
+default['tensorflow']['hopstfdemo']['url'] = "#{node['tensorflow']['hopstfdemo']['base_url']}/tensorflow/#{node['tensorflow']['examples_version']}/demo.tar.gz"
 
 #
 # Base directories
