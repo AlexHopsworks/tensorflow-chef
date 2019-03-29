@@ -31,7 +31,7 @@ if private_ip.eql? node['tensorflow']['default']['private_ips'][0]
      dest "/user/#{node['hops']['hdfs']['user']}/#{base_filename}"
    end
 
-  url=node['tensorflow']['hopstfdemo_url']
+  url=node['tensorflow']['hopstfdemo']['url']
 
   base_filename =  "demo-#{node['tensorflow']['examples_version']}.tar.gz"
   cached_filename = "#{Chef::Config['file_cache_path']}/#{base_filename}"
