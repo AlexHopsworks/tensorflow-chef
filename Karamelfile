@@ -5,7 +5,4 @@ dependencies:
   - recipe: tensorflow::default
     global:  
       - hops::dn
-
-
-
-
+      - hops::client
