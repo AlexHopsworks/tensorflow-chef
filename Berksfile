@@ -8,5 +8,5 @@ metadata
 
 cookbook 'kagent', github: 'logicalclocks/kagent-chef', branch: '3.0'
 cookbook 'ndb', github: "logicalclocks/ndb-chef", branch: "3.0"
-cookbook 'hops', github: "logicalclocks/hops-hadoop-chef", branch: "3.0"
+cookbook 'hops', github: "AlexHopsworks/hops-hadoop-chef", branch: "heap-3.0"
 cookbook 'conda', github: 'logicalclocks/conda-chef', branch: '3.0'
